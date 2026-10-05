@@ -1,0 +1,176 @@
+{
+  "name": "techstack-multi-command",
+  "displayName": "TechStack Multi Command Executor",
+  "description": "Run configured VS Code command workflows on files, folders, workspaces, and globs.",
+  "version": "0.0.1",
+  "author": "Tanmay Pachpande <ptanmay143@outlook.com>",
+  "publisher": "ptanmay143",
+  "icon": "icon.png",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ptanmay143/techstack-multi-command"
+  },
+  "bugs": {
+    "url": "https://github.com/ptanmay143/techstack-multi-command/issues"
+  },
+  "homepage": "https://github.com/ptanmay143/techstack-multi-command",
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "main": "./out/src/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "multiCommandRunner.runWorkflowFromExplorer",
+        "title": "Run Workflow..."
+      },
+      {
+        "command": "multiCommandRunner.runWorkflowOnWorkspace",
+        "title": "TechStack Multi Command Executor: Run Workflow on Workspace..."
+      },
+      {
+        "command": "multiCommandRunner.runWorkflowOnGlob",
+        "title": "TechStack Multi Command Executor: Run Workflow on Glob..."
+      },
+      {
+        "command": "multiCommandRunner.runWorkflowOnFolder",
+        "title": "TechStack Multi Command Executor: Run Workflow on Folder..."
+      }
+    ],
+    "submenus": [
+      {
+        "id": "multiCommandRunner.workflowMenu",
+        "label": "Run File Workflow"
+      }
+    ],
+    "menus": {
+      "explorer/context": [
+        {
+          "submenu": "multiCommandRunner.workflowMenu",
+          "when": "resourceScheme == file",
+          "group": "navigation"
+        }
+      ],
+      "multiCommandRunner.workflowMenu": [
+        {
+          "command": "multiCommandRunner.runWorkflowFromExplorer",
+          "when": "resourceScheme == file",
+          "group": "1_run"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "TechStack Multi Command Executor",
+      "properties": {
+        "multiCommandRunner.workflows": {
+          "type": "object",
+          "default": {},
+          "markdownDescription": "Named command workflows. Each workflow runs its ordered `steps` against each resolved file.",
+          "additionalProperties": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "label": {
+                "type": "string",
+                "description": "Optional label shown when selecting a workflow."
+              },
+              "description": {
+                "type": "string",
+                "description": "Optional workflow detail shown when selecting a workflow."
+              },
+              "steps": {
+                "type": "array",
+                "minItems": 1,
+                "description": "Ordered VS Code command steps.",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "command"
+                  ],
+                  "properties": {
+                    "command": {
+                      "type": "string",
+                      "minLength": 1,
+                      "description": "VS Code command identifier."
+                    },
+                    "args": {
+                      "type": "array",
+                      "description": "Optional JSON-compatible positional arguments passed to the command."
+                    }
+                  }
+                }
+              },
+              "include": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "description": "Optional glob patterns a target must match."
+              },
+              "exclude": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "description": "Optional glob patterns to omit from the target set."
+              },
+              "save": {
+                "type": "string",
+                "enum": [
+                  "afterEachStep",
+                  "afterWorkflow",
+                  "never"
+                ],
+                "default": "afterWorkflow",
+                "description": "When to save a processed document."
+              }
+            },
+            "required": [
+              "steps"
+            ]
+          }
+        },
+        "multiCommandRunner.excludedDirectories": {
+          "type": "array",
+          "default": [
+            "node_modules",
+            ".vscode",
+            "dist",
+            "out",
+            ".venv"
+          ],
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "description": "Directory names excluded during recursive target discovery. The .git directory is always excluded."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "compile": "tsc -p .",
+    "watch": "tsc -watch -p .",
+    "test": "npm run compile && node --test out/test/*.test.js",
+    "test:extension": "npm run compile && node out/test/runTest.js",
+    "vscode:prepublish": "npm run compile"
+  },
+  "devDependencies": {
+    "@types/mocha": "^10.0.10",
+    "@types/node": "^20.12.12",
+    "@types/vscode": "^1.85.0",
+    "@vscode/test-electron": "^3.1.0",
+    "mocha": "^12.0.3",
+    "typescript": "^5.4.5"
+  },
+  "dependencies": {
+    "minimatch": "^9.0.9"
+  }
+}

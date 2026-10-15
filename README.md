@@ -7,14 +7,14 @@
 <div align="center">
   TechStack Multi Command Executor
   <br />
-  <a href="#about"><strong>Explore the screenshots »</strong></a>
+  <a href="#about"><strong>Explore the features »</strong></a>
   <br />
   <br />
-  <a href="https://github.com/ptanmay143/techstack-multi-command/issues/new?assignees=&labels=bug&template=01_BUG_REPORT.md&title=bug%3A+">Report a Bug</a>
+  <a href="https://github.com/ptanmay143/techstack-multi-command/issues/new?assignees=&labels=bug&title=bug%3A+">Report a Bug</a>
   ·
-  <a href="https://github.com/ptanmay143/techstack-multi-command/issues/new?assignees=&labels=enhancement&template=02_FEATURE_REQUEST.md&title=feat%3A+">Request a Feature</a>
+  <a href="https://github.com/ptanmay143/techstack-multi-command/issues/new?assignees=&labels=enhancement&title=feat%3A+">Request a Feature</a>
   .
-  <a href="https://github.com/ptanmay143/techstack-multi-command/issues/new?assignees=&labels=question&template=04_SUPPORT_QUESTION.md&title=support%3A+">Ask a Question</a>
+  <a href="https://github.com/ptanmay143/techstack-multi-command/issues/new?assignees=&labels=question&title=support%3A+">Ask a Question</a>
 </div>
 
 <div align="center">
@@ -37,9 +37,9 @@
 - [Usage](#usage)
 - [Roadmap](#roadmap)
 - [Support](#support)
-- [Project assistance](#project-assistance)
+- [Project Assistance](#project-assistance)
 - [Contributing](#contributing)
-- [Authors & contributors](#authors--contributors)
+- [Authors & Contributors](#authors--contributors)
 - [Security](#security)
 - [License](#license)
 - [Acknowledgements](#acknowledgements)
@@ -123,14 +123,6 @@ npm run test:extension
 vsce package
 ```
 
-### Environment Variables
-
-No environment variables are required by this extension. The project reads configuration from VS Code settings instead, specifically the `multiCommandRunner.workflows` and `multiCommandRunner.excludedDirectories` settings exposed by the extension manifest.
-
-| Variable | Required | Default | Description | Example Value |
-| --- | --- | --- | --- | --- |
-| None | No | N/A | The extension does not read environment variables or `.env` files. Workflow configuration is stored in VS Code user/workspace settings. | N/A |
-
 ---
 
 ## Usage
@@ -204,74 +196,67 @@ See the [open issues](https://github.com/ptanmay143/techstack-multi-command/issu
 
 - [Top Feature Requests](https://github.com/ptanmay143/techstack-multi-command/issues?q=label%3Aenhancement+is%3Aopen+sort%3Areactions-%2B1-desc)
 - [Top Bugs](https://github.com/ptanmay143/techstack-multi-command/issues?q=is%3Aissue+is%3Aopen+label%3Abug+sort%3Areactions-%2B1-desc)
-- [Newest Bugs](https://github.com/ptanmay143/techstack-multi-command/issues?q=is%3Aopen+is%3Aissue+label%3Abug)
 
-The repository's documented status indicates that the initial feature set is already implemented and locally validated, with the project in a development release state rather than a published marketplace release. The current direction is focused on bulk workflow execution quality, safety, and packaging readiness rather than a broader platform expansion.
+No formal roadmap has been documented yet. See the issue tracker for outstanding work.
 
 ---
 
 ## Support
 
-Reach out through the project issue tracker or the maintainer's GitHub profile:
+Reach out to the maintainer at one of the following places:
 
-- [GitHub issues](https://github.com/ptanmay143/techstack-multi-command/issues/new?assignees=&labels=question&template=04_SUPPORT_QUESTION.md&title=support%3A+)
-- [GitHub profile](https://github.com/ptanmay143)
-
-No additional support channels or chat communities are documented in the repository at this time.
+- [GitHub Issues](https://github.com/ptanmay143/techstack-multi-command/issues)
+- Email: ptanmay143@outlook.com
 
 ---
 
-## Project assistance
+## Project Assistance
 
-If you want to say thank you or support active development of TechStack Multi Command Executor:
+If you want to say **thank you** or support active development of techstack-multi-command:
 
 - Add a [GitHub Star](https://github.com/ptanmay143/techstack-multi-command) to the project.
-- Share the extension with other VS Code users who want a repeatable workflow runner.
-- Write about the extension on [Dev.to](https://dev.to/), [Medium](https://medium.com/), or your own blog.
-
-Together, we can make TechStack Multi Command Executor more useful for repetitive editor tasks.
+- Write about the project on your blog.
 
 ---
 
 ## Contributing
 
-First off, thanks for taking the time to contribute. This repository is small, focused, and meant to be improved through straightforward pull requests that keep the extension behavior safe and observable.
+First off, thanks for taking the time to contribute! Contributions are what make the open-source community such an amazing place to learn, inspire, and create.
 
-There is no dedicated `CONTRIBUTING.md` file in the repository yet, so the current workflow is to fork the project, create a branch for your change, implement your work, and open a pull request against the main project branch. The project currently uses conventional GitHub-style pull requests rather than a formal branch naming convention or commit-message policy that is documented in the repo. Before submitting a change, run the local validation suite with:
+### Development Workflow
 
+1. Fork the Project.
+2. Create your Feature Branch (`git checkout -b feature/AmazingFeature`).
+3. Commit your Changes using Conventional Commits (`git commit -m 'feat: add some AmazingFeature'`).
+4. Push to the Branch (`git push origin feature/AmazingFeature`).
+5. Open a Pull Request.
+
+### Code Style & Linting
+Ensure all code compiles and passes checks before submitting:
 ```bash
+npm run compile
 npm test
 ```
 
-For extension-host validation, run:
-
-```bash
-npm run test:extension
-```
-
-The repository does not currently define a separate linting tool beyond the TypeScript compiler, so the compile and test commands are the baseline acceptance checks for a contribution.
-
 ---
 
-## Authors & contributors
+## Authors & Contributors
 
 The original setup of this repository is by [Tanmay Pachpande](https://github.com/ptanmay143).
 
-For a full list of all authors and contributors, see [the contributors page](https://github.com/ptanmay143/techstack-multi-command/graphs/contributors).
+For a full list of all authors and contributors, see [the contributors page](https://github.com/ptanmay143/techstack-multi-command/contributors).
 
 ---
 
 ## Security
 
-This extension is intentionally constrained to invoke VS Code commands and extension actions that the user configures, and it does not execute arbitrary shell commands or scripts. That said, workflow definitions are trusted settings; a misconfigured command can still trigger side effects on documents and files. The project therefore relies on target preview, confirmation dialogs, and clear output reporting rather than claiming that every command is inherently safe to run unattended.
-
-No separate security policy file exists in this repository yet. If you discover a bug or unsafe behavior, report it through the [GitHub issue tracker](https://github.com/ptanmay143/techstack-multi-command/issues) or via a direct maintainer contact on the project profile.
+techstack-multi-command follows good practices of security, but 100% security cannot be assured. techstack-multi-command is provided **"as is"** without any **warranty**. Use at your own risk.
 
 ---
 
 ## License
 
-This project is licensed under the **MIT license**.
+This project is licensed under the **MIT License**.
 
 See [LICENSE](LICENSE) for more information.
 
@@ -281,4 +266,4 @@ See [LICENSE](LICENSE) for more information.
 
 No specific acknowledgements at this time.
 
-<!-- Generated by README_GENERATOR_PROMPT v{prompt_version=0.1} -->
+<!-- Generated by README_GENERATOR_PROMPT v0.1 -->

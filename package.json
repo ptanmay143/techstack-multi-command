@@ -2,7 +2,7 @@
   "name": "techstack-multi-command",
   "displayName": "TechStack Multi Command Executor",
   "description": "Run configured VS Code command workflows on files, folders, workspaces, and globs.",
-  "version": "0.0.1",
+  "version": "1.1.0",
   "author": "Tanmay Pachpande <ptanmay143@outlook.com>",
   "publisher": "ptanmay143",
   "icon": "icon.png",
@@ -21,30 +21,39 @@
   "categories": [
     "Other"
   ],
+  "keywords": [
+    "multi-root ready"
+  ],
+  "activationEvents": [
+    "onCommand:multiCommandRunner.runWorkflowFromExplorer",
+    "onCommand:multiCommandRunner.runWorkflowOnWorkspace",
+    "onCommand:multiCommandRunner.runWorkflowOnGlob",
+    "onCommand:multiCommandRunner.runWorkflowOnFolder"
+  ],
   "main": "./out/src/extension.js",
   "contributes": {
     "commands": [
       {
         "command": "multiCommandRunner.runWorkflowFromExplorer",
-        "title": "Run Workflow..."
+        "title": "TechStack: Run Workflow"
       },
       {
         "command": "multiCommandRunner.runWorkflowOnWorkspace",
-        "title": "TechStack Multi Command Executor: Run Workflow on Workspace..."
+        "title": "TechStack: Run Workflow on Workspace"
       },
       {
         "command": "multiCommandRunner.runWorkflowOnGlob",
-        "title": "TechStack Multi Command Executor: Run Workflow on Glob..."
+        "title": "TechStack: Run Workflow on Glob"
       },
       {
         "command": "multiCommandRunner.runWorkflowOnFolder",
-        "title": "TechStack Multi Command Executor: Run Workflow on Folder..."
+        "title": "TechStack: Run Workflow on Folder"
       }
     ],
     "submenus": [
       {
         "id": "multiCommandRunner.workflowMenu",
-        "label": "Run File Workflow"
+        "label": "TechStack: Run File Workflow"
       }
     ],
     "menus": {
@@ -64,6 +73,7 @@
       ]
     },
     "configuration": {
+      "type": "object",
       "title": "TechStack Multi Command Executor",
       "properties": {
         "multiCommandRunner.workflows": {
@@ -160,7 +170,8 @@
     "watch": "tsc -watch -p .",
     "test": "npm run compile && node --test out/test/*.test.js",
     "test:extension": "npm run compile && node out/test/runTest.js",
-    "vscode:prepublish": "npm run compile"
+    "vscode:prepublish": "npm run compile",
+    "vsce-package": "npx @vscode/vsce package"
   },
   "devDependencies": {
     "@types/mocha": "^10.0.10",

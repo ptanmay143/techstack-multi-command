@@ -38,5 +38,15 @@ export default [
             "no-throw-literal": "warn",
             semi: "warn",
         },
+    },
+    {
+        files: ["src/test/**/*.ts"],
+        rules: {
+            "@typescript-eslint/no-floating-promises": "off",
+            "@typescript-eslint/no-unsafe-assignment": "off",
+            "@typescript-eslint/no-unsafe-member-access": "off",
+            "@typescript-eslint/no-unsafe-call": "off",
+            "@typescript-eslint/no-require-imports": "off",
+        },
     }
 ];

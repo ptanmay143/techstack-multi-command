@@ -10,7 +10,7 @@ async function main(): Promise<void> {
 	const extensionTestsPath = path.resolve(
 		process.env.TECHSTACK_MCR_EXTENSION_TESTS_PATH ?? path.resolve(__dirname, "suite")
 	);
-	const workspacePath = path.resolve(__dirname, "../../test/fixtures/multi-root.code-workspace");
+	const workspacePath = path.resolve(__dirname, "../../src/test/fixtures/multi-root.code-workspace");
 	const executablePath = process.env.VSCODE_EXECUTABLE;
 	const profileDirectory = await fs.mkdtemp(path.join(os.tmpdir(), "techstack-mcr-vscode-profile-"));
 	const executionDirectory = await fs.mkdtemp(path.join(os.tmpdir(), "techstack-mcr-execution-test-"));

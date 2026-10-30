@@ -1,7 +1,7 @@
 import * as assert from "node:assert/strict";
 import * as path from "node:path";
 import * as vscode from "vscode";
-import type { Workflow } from "../src/workflows";
+import type { Workflow } from "../workflows";
 
 const extensionId = "local.techstack-multi-command";
 const commandIds = [
@@ -24,8 +24,8 @@ export async function run(): Promise<void> {
 	const extensionPath = process.env.TECHSTACK_MCR_EXTENSION_PATH;
 	assert.ok(extensionPath, "Expected the smoke test to run against the extracted VSIX.");
 	const { resolveTargets } = require(
-		path.join(extensionPath, "out", "src", "targetResolver.js")
-	) as typeof import("../src/targetResolver");
+		path.join(extensionPath, "out", "targetResolver.js")
+	) as typeof import("../targetResolver");
 	const workspaceFolder = vscode.workspace.workspaceFolders?.find(
 		(folder) => folder.name === "workspace-a"
 	);

@@ -9,7 +9,7 @@
 			"args": [
 				"--disable-extensions",
 				"--extensionDevelopmentPath=${workspaceFolder}",
-				"${workspaceFolder}/test/fixtures/multi-root.code-workspace"
+				"${workspaceFolder}/src/test/fixtures/multi-root.code-workspace"
 			],
 			"outFiles": [
 				"${workspaceFolder}/dist/**/*.js"
@@ -23,7 +23,7 @@
 			"args": [
 				"--disable-extensions",
 				"--extensionDevelopmentPath=${workspaceFolder}",
-				"${workspaceFolder}/test/fixtures/workspace-a"
+				"${workspaceFolder}/src/test/fixtures/workspace-a"
 			],
 			"outFiles": [
 				"${workspaceFolder}/dist/**/*.js"

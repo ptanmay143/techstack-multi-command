@@ -3,9 +3,9 @@ import * as fs from "node:fs/promises";
 import * as path from "node:path";
 import * as vscode from "vscode";
 import { suite, test } from "mocha";
-import { resolveTargets } from "../../src/targetResolver";
-import { executeWorkflowOnTargets } from "../../src/workflowExecutor";
-import { Workflow } from "../../src/workflows";
+import { resolveTargets } from "../../targetResolver";
+import { executeWorkflowOnTargets } from "../../workflowExecutor";
+import { Workflow } from "../../workflows";
 
 const extensionId = "local.techstack-multi-command";
 const contributedCommandIds = [

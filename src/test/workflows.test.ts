@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { parseWorkflows } from "../src/workflows";
+import { parseWorkflows } from "../workflows";
 
 test("parses named workflows and defaults save policy to afterWorkflow", () => {
 	const result = parseWorkflows({

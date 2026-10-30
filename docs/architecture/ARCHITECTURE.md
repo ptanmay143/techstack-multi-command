@@ -294,16 +294,16 @@ src/
   targetResolver.ts
   workflowExecutor.ts
   targetPreview.ts
-test/
-  workflows.test.ts
-  runTest.ts
-  suite/
-    index.ts
-    extension.test.ts
-  fixtures/
-    multi-root.code-workspace
-    workspace-a/
-    workspace-b/
+  test/
+    workflows.test.ts
+    runTest.ts
+    suite/
+      index.ts
+      extension.test.ts
+    fixtures/
+      multi-root.code-workspace
+      workspace-a/
+      workspace-b/
 .gitignore
 .vscodeignore
 esbuild.js                            ← added during refactor

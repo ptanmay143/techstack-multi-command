@@ -127,7 +127,7 @@ function readOptionalPatterns(
 	if (value === undefined) {
 		return undefined;
 	}
-	if (!Array.isArray(value) || !value.every((pattern) => typeof pattern === "string" && pattern.trim())) {
+	if (!Array.isArray(value) || !value.every((pattern): pattern is string => typeof pattern === 'string' && pattern.trim() !== '')) {
 		errors.push(`Workflow "${workflowName}" "${key}" must be an array of non-empty glob strings.`);
 		return undefined;
 	}

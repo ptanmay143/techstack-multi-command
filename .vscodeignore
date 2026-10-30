@@ -6,7 +6,10 @@ docs/**
 src/**
 test/**
 tsconfig.json
-out/test/**
+out/**
+esbuild.js
+eslint.config.mjs
 **/*.map
 package-lock.json
 icon/**
+!dist/extension.js

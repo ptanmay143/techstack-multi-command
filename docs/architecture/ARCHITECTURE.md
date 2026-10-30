@@ -1,8 +1,10 @@
-# Architecture
+# ARCHITECTURE.md — TechStack Multi Command Executor
 
 ## Status
 
-Approved. This document is the source of truth for the Multi Command Runner extension.
+Approved. This document is the source of truth for the TechStack Multi Command Executor extension.
+
+---
 
 ## Goals
 
@@ -13,7 +15,9 @@ Approved. This document is the source of truth for the Multi Command Runner exte
 - Let users define reusable named workflows and control which file targets each workflow can process.
 - Make bulk operations observable, cancellable, and safe by previewing the target set and reporting per-file outcomes.
 
-## Non-goals
+---
+
+## Non-Goals
 
 - Implement formatters, language servers, or code actions; workflows invoke commands provided by VS Code or installed extensions.
 - Promise that every VS Code command can run unattended or against an arbitrary document. Commands can require an active editor, a selection, user input, or a particular language extension.
@@ -21,42 +25,104 @@ Approved. This document is the source of truth for the Multi Command Runner exte
 - Provide a fully dynamic native submenu with one contribution per user-defined workflow. VS Code extension menu contributions are declared statically; the proposed submenu opens a workflow picker so configured workflows can be listed dynamically.
 - Modify files outside the resolved target set or suppress errors from commands that fail.
 
+---
+
 ## Components
 
-1. **Extension manifest and command contributions**
-   - Declare the Explorer submenu and static command entry points.
-   - Register command-palette actions for workspace, glob, and folder workflows.
-   - Contribute configuration for workflow definitions and safe file-discovery defaults.
-2. **Workflow configuration**
-   - Read named workflows from VS Code user/workspace settings.
-   - A workflow contains an ordered list of `{ command, args? }` steps plus optional include/exclude globs and execution preferences.
-   - Offer a Quick Pick when the user invokes a generic context-menu or bulk-run command; the picker shows configured workflow labels and descriptions.
-3. **Target resolver**
-   - Resolve Explorer-selected files directly and recursively enumerate selected folders.
-   - Resolve workspace and glob scopes across one or more workspace folders.
-   - Apply workflow filters, VS Code exclusions, built-in protected-directory exclusions, and optional Git-ignore filtering before execution.
-   - Deduplicate URIs and present a preview with target count before processing.
-4. **Sequential execution engine**
-   - Process files one at a time by default, opening each document and showing it in an editor when required by commands.
-   - Run all workflow steps in configured order for each file. Await each command before advancing.
-   - Save only according to the workflow's save policy; do not silently close or discard editors.
-   - Provide progress, cancellation between steps/files, and structured per-file success/failure results.
-5. **Output and progress**
-   - Use a dedicated Output channel for target summaries, command errors, and completion counts.
-   - Show VS Code progress for long-running operations and a concise completion notification with an option to open the output.
+### 1. Extension Entry Point (`src/extension.ts`)
 
-## Data model
+Registers the four contributed commands and owns the top-level interaction flow:
 
-### Workflow setting
+- `multiCommandRunner.runWorkflowFromExplorer` — reads Explorer selection, picks a workflow, resolves and previews targets.
+- `multiCommandRunner.runWorkflowOnWorkspace` — picks a workflow, resolves all workspace files.
+- `multiCommandRunner.runWorkflowOnGlob` — prompts for a glob pattern, then picks a workflow.
+- `multiCommandRunner.runWorkflowOnFolder` — accepts a folder URI (from Explorer) or prompts with an open-folder dialog.
 
-Proposed setting: `multiCommandRunner.workflows`, an object keyed by stable workflow name.
+Common helpers:
+- `selectWorkflow()` — reads `multiCommandRunner.workflows` from settings, parses it, surfaces errors to the Output channel, and shows a Quick Pick.
+- `resolveAndPreview()` — calls `resolveTargets()`, logs resolution errors, calls `previewTargets()`, and if confirmed calls `executeWorkflowOnTargets()`.
+
+### 2. Workflow Configuration (`src/workflows.ts`)
+
+Pure data layer — no VS Code API dependencies. Defines:
+
+- `JsonValue` — recursive JSON-compatible value type.
+- `SavePolicy` — `"afterEachStep" | "afterWorkflow" | "never"`.
+- `CommandStep` — `{ command: string; args?: JsonValue[] }`.
+- `Workflow` — `{ name, label?, description?, steps, include?, exclude?, save }`.
+- `WorkflowParseResult` — `{ workflows: Workflow[]; errors: string[] }`.
+- `parseWorkflows(value: unknown): WorkflowParseResult` — validates raw settings input; collects errors per workflow; retains valid workflows alongside errors.
+
+### 3. Target Resolver (`src/targetResolver.ts`)
+
+Resolves a `TargetScope` to a deduplicated, filtered list of file URIs. Scopes:
+
+| Scope kind | Source |
+|---|---|
+| `selected` | Explorer-selected URIs (files passed through, folders expanded recursively) |
+| `workspace` | All workspace folders enumerated via `workspace.findFiles("**/*")` |
+| `glob` | `workspace.findFiles(pattern)` |
+| `folder` | `workspace.findFiles("**/*", undefined)` within the given base |
+
+Filtering pipeline (applied in order):
+
+1. Exclude `.git` directory (always).
+2. Exclude configured `excludedDirectories` (normalised, case-insensitive on Windows).
+3. Exclude resources matching `files.exclude` workspace settings.
+4. Apply workflow `include` patterns (if present).
+5. Apply workflow `exclude` patterns (if present).
+6. Deduplicate by resolved file path; prefer the shorter/closer workspace root.
+
+Returns `{ targets: vscode.Uri[]; errors: string[] }`. Errors surface inaccessible selected resources; they do not abort resolution.
+
+### 4. Sequential Execution Engine (`src/workflowExecutor.ts`)
+
+Processes targets one at a time. For each file:
+
+1. Check cancellation.
+2. Open the document (`workspace.openTextDocument`).
+3. Show it in an editor (`window.showTextDocument`).
+4. Execute each `CommandStep` in order (`commands.executeCommand`). Re-shows the document if focus has shifted.
+5. Save according to `SavePolicy` (`afterEachStep` saves after each successful step; `afterWorkflow` saves once after all steps; `never` leaves the document dirty).
+6. On command failure: record failure, skip remaining steps for this file, continue to next file.
+7. On cancellation: mark remaining files `notStarted`, stop loop.
+
+After all files: attempt to restore the previously active editor.
+
+Exports:
+- `executeWorkflowOnTargets(targets, workflow, options?): Promise<WorkflowExecutionReport>`
+- `WorkflowExecutionReport` — `{ files: FileExecutionResult[]; cancelled: boolean; editorRestoreError?: string }`
+- `FileExecutionResult` — `{ uri; status; completedSteps; failure? }`
+
+### 5. Target Preview (`src/targetPreview.ts`)
+
+Shows a `QuickPick` listing the resolved targets (capped at 500 for display). On acceptance, shows a modal confirmation warning that effects cannot be rolled back. Returns `boolean` (confirmed or cancelled).
+
+### 6. Output Channel
+
+A single dedicated Output channel (`"TechStack Multi Command Executor"`) is created at activation and passed through the call chain. It records:
+
+- Configuration errors.
+- Target resolution errors.
+- Resolved target count per workflow.
+- Per-file completion / failure details (file path, step index, error message).
+- Editor-restoration errors.
+- Run summary (succeeded / failed / cancelled counts).
+
+---
+
+## Data Model
+
+### Workflow Setting
+
+`multiCommandRunner.workflows` — a `Record<string, WorkflowDefinition>` in VS Code settings.
 
 ```json
 {
   "multiCommandRunner.workflows": {
-    "Format and organize": {
-      "label": "Format and organize",
-      "description": "Format each file, then organize imports",
+    "formatAndOrganize": {
+      "label": "Format and organize imports",
+      "description": "Format supported source files, then organize imports",
       "steps": [
         { "command": "editor.action.formatDocument" },
         { "command": "editor.action.organizeImports" }
@@ -71,100 +137,180 @@ Proposed setting: `multiCommandRunner.workflows`, an object keyed by stable work
 
 Fields:
 
-- `label` and `description` are optional picker text; the key is the fallback label.
-- `steps` is a non-empty, ordered array of command identifiers and optional JSON-compatible positional argument arrays, passed to VS Code's command execution API.
-- `include` and `exclude` are optional glob filters intersected with the selected execution scope.
-- `save` is one of `afterEachStep`, `afterWorkflow`, or `never`; proposed default is `afterWorkflow`.
-- A workflow may optionally specify whether to prompt before running. Destructive commands remain the user's responsibility; preview and confirmation are enabled by default for bulk runs.
+- `label` and `description` — optional picker text; the key is the fallback label.
+- `steps` — non-empty ordered array of `{ command, args? }`. `args` is a JSON-compatible array.
+- `include` / `exclude` — optional glob filters intersected with the execution scope.
+- `save` — `afterEachStep | afterWorkflow | never`. Default: `afterWorkflow`.
 
-### Run
+### `multiCommandRunner.excludedDirectories`
 
-An in-memory run contains its scope (selected resources, workspace, folder, or glob), resolved document URIs, current file and step, cancellation state, and per-file outcome. Run state is not persisted.
+Array of directory name strings (default: `["node_modules", ".vscode", "dist", "out", ".venv"]`). `.git` is always excluded regardless of this setting.
 
-## APIs and user-facing commands
+### Run State
 
-### Context menu
+An in-memory `WorkflowExecutionReport` accumulates `FileExecutionResult` entries during a run. Run state is never persisted.
 
-- Explorer: a submenu such as **Run File Workflow** on file and folder resources, using VS Code's static `contributes.menus` submenu mechanism.
-- The submenu's generic **Run Workflow…** action opens a Quick Pick populated from configured workflows; the selected Explorer resources define the scope.
-- For a selected folder, files are discovered recursively. For selected files, only those files are processed, subject to workflow filters.
-- Since menu contributions are static, a dynamic one-menu-item-per-workflow design is not assumed. If the picker UX is not acceptable, that is an architecture decision to revisit before implementation.
+---
 
-### Command palette
+## APIs and User-Facing Commands
 
-- **Run Workflow on Workspace…**
-- **Run Workflow on Glob…** (prompts for a glob, then workflow)
-- **Run Workflow on Folder…** (prompts for a folder when not invoked on one)
-- Optional keybinding support comes naturally from contributed commands.
+### Contributed Commands
 
-### Execution contract
+| Command ID | Title | Entry Point |
+|---|---|---|
+| `multiCommandRunner.runWorkflowFromExplorer` | TechStack: Run Workflow | Explorer context submenu |
+| `multiCommandRunner.runWorkflowOnWorkspace` | TechStack: Run Workflow on Workspace | Command palette |
+| `multiCommandRunner.runWorkflowOnGlob` | TechStack: Run Workflow on Glob | Command palette |
+| `multiCommandRunner.runWorkflowOnFolder` | TechStack: Run Workflow on Folder | Command palette |
 
-- Resolve and preview targets before changing documents.
-- For each file: open/show the document, run each command with its arguments in sequence, then save according to policy.
-- A failed command stops the remaining steps for that file, records the failure, and continues to the next file unless the user cancels.
-- Cancellation prevents starting further steps/files. Already-applied edits are not rolled back.
-- Existing open editor documents are not closed by the extension. Restoration of the previously active editor is attempted after a run, without promising to reverse command side effects.
+### Contributed Submenu
 
-## Security and safety
+- `multiCommandRunner.workflowMenu` — appears in `explorer/context` when `resourceScheme == file`.
 
-- Only commands explicitly configured by the user are invoked; command identifiers and arguments are treated as trusted settings, not as safe merely because they are valid JSON.
-- Never invoke a shell or interpolate file paths into shell commands.
-- Keep `.git` excluded regardless of user glob configuration. Recommend excluding common generated/dependency folders by default, with explicit preview of all targets.
-- Confirm bulk runs and show an inspectable target list before execution; clearly state that command effects cannot be rolled back.
-- Honor VS Code cancellation and workspace trust. Do not bypass VS Code's Workspace Trust restrictions.
-- Log command IDs and file URIs to the local Output channel; avoid logging document contents or command argument values that may contain sensitive data.
-- Treat invalid workflow definitions, invalid globs, inaccessible files, and command failures as visible errors with actionable diagnostics.
+### Activation Events
+
+- `onCommand:multiCommandRunner.runWorkflowFromExplorer`
+- `onCommand:multiCommandRunner.runWorkflowOnWorkspace`
+- `onCommand:multiCommandRunner.runWorkflowOnGlob`
+- `onCommand:multiCommandRunner.runWorkflowOnFolder`
+
+### Execution Contract
+
+1. Resolve and preview targets before changing any document.
+2. For each file: open/show, run each step in order, save per policy.
+3. A failed command stops remaining steps for that file; the next file begins.
+4. Cancellation prevents new steps/files from starting; in-progress commands run to completion.
+5. Existing open editors are never closed. The prior active editor is restored after a run (best-effort).
+
+---
+
+## Security and Safety
+
+- Only commands explicitly configured by the user are invoked.
+- No shell execution or path interpolation into shell commands.
+- `.git` is always excluded; common generated/dependency folders excluded by default.
+- Target preview and modal confirmation required before bulk execution.
+- Command IDs and file URIs logged to the Output channel; document content and argument values are not logged.
+- Workspace trust is honoured; VS Code handles trust restrictions at the API level.
+- Invalid workflow definitions, globs, inaccessible files, and command failures produce visible diagnostics.
+
+---
 
 ## Deployment
 
-- Package as a standard VS Code extension using the Extension API and TypeScript.
-- Publish/install as a `.vsix` built with `vsce`; no external runtime service is required.
-- Target the VS Code version that supports submenu contributions and the APIs selected during implementation; set and test an explicit `engines.vscode` minimum.
-- Keep runtime dependencies minimal; prefer VS Code APIs for file discovery, document editing, progress, configuration, and command execution.
-- Maintain user-facing setup and usage documentation in `docs/USER_GUIDE.md`. The project README is intentionally out of scope and must remain untouched.
+- Standard VS Code extension. TypeScript compiled with `tsc` (`commonjs` modules) to `out/`. Production bundle produced by `esbuild` → `dist/extension.js`.
+- Main entry for production/VSIX: `./dist/extension.js`.
+- Main entry for development/test: `./out/src/extension.js`.
+- Published as `.vsix` via `@vscode/vsce`.
+- Runtime dependency: `minimatch` (glob filtering). All other dependencies are `devDependencies`.
+- Minimum VS Code engine: `^1.85.0` (required for submenu contribution API).
+- No external services required.
+
+---
+
+## Build and Tooling
+
+| Tool | Purpose |
+|---|---|
+| `esbuild` (`esbuild.js`) | Bundles `src/extension.ts` → `dist/extension.js`. Production build minifies; dev/watch builds include source maps. Added during this refactor. |
+| `tsc` | Type-checking and test compilation. `rootDir: "."` covers both `src/` and `test/`; output goes to `out/`. |
+| `eslint` (`eslint.config.mjs`) | TypeScript-ESLint with `recommendedTypeChecked`. Runs on `src/**/*.ts`. Added during this refactor. |
+| `@vscode/test-electron` + `test/runTest.ts` | Launches VS Code Extension Development Host for integration tests in `test/suite/`. |
+| Node built-in test runner | Runs unit tests (`test/workflows.test.ts`) without VS Code via `node --test out/test/*.test.js`. |
+| `.vscode/` | Committed: `launch.json` (F5 debug configs), `tasks.json` (watch tasks), `settings.json` (hide generated output). Added during this refactor. |
+
+### `.vscode/` Rationale
+
+`.vscode/` is committed because these files define the **developer experience** for contributors — F5 launch configurations, default build tasks, and editor settings that hide generated output folders (`out/`, `dist/`). The `.gitignore` pattern `!.vscode/settings.json`, `!.vscode/tasks.json`, `!.vscode/launch.json` (from the VisualStudioCode gitignore template) whitelists these three files explicitly.
+
+### `package.json` Script Changes (refactor additions)
+
+| Script | Before | After |
+|---|---|---|
+| `vscode:prepublish` | `npm run compile` (tsc) | `npm run package` (esbuild production) |
+| `compile` | `tsc -p .` | `tsc --noEmit && eslint src && node esbuild.js` |
+| `package` | _(new)_ | `tsc --noEmit && eslint src && node esbuild.js --production` |
+| `watch` | `tsc -watch -p .` | `npm-run-all -p watch:*` |
+| `watch:esbuild` | _(new)_ | `node esbuild.js --watch` |
+| `watch:tsc` | _(new)_ | `tsc --noEmit --watch` |
+| `lint` | _(new)_ | `eslint src` |
+
+---
 
 ## Constraints
 
-- VS Code menu contributions are static manifest entries; runtime settings cannot directly add arbitrary submenu entries.
-- Many editor commands rely on an active text editor and may show their own dialogs or alter editor focus. Sequential invocation cannot make all commands headless.
-- `workspace.findFiles` and `workspace.fs` are the intended discovery abstractions, but Git-ignore behavior may require an optional Git extension API integration or a separately evaluated implementation. No shell-based `git` execution is proposed.
-- Folder and file selection arguments vary by VS Code menu surface. Explorer behavior is the required initial surface; SCM and editor-tab surfaces need separate validation.
-- Large workspaces require cancellation, progress updates, bounded UI updates, and a preview that remains usable for large target counts.
-- A workflow can include commands that are not idempotent or that produce effects beyond the target document. Preview and confirmation reduce accidental execution but cannot guarantee reversibility.
+- VS Code menu contributions are static manifest entries; runtime settings cannot directly add arbitrary submenu entries per workflow.
+- Many editor commands rely on an active text editor and may show their own dialogs or alter focus.
+- `workspace.findFiles` is the file-discovery abstraction; Git-ignore behaviour may differ from `git` CLI.
+- Large workspaces require cancellation, progress updates, bounded UI updates, and a capped preview.
+- Workflows can invoke non-idempotent commands.
+
+---
 
 ## Risks
 
-- **Command compatibility:** An arbitrary command may fail when invoked without a specific editor state or may act on a different active resource. Mitigation: clearly document editor focus semantics, execute one file at a time, and report the file/step that failed.
-- **Editor-state disruption:** Opening each file can affect tabs, focus, and user-visible editor state. Mitigation: preserve pre-existing editors, avoid closing documents, and restore the prior active editor when possible.
-- **Unexpected modifications:** A workflow may modify and save many files. Mitigation: preview, confirmation, explicit save policy, cancellation, and per-file reporting.
-- **Large target sets:** Previewing or processing huge workspaces may be slow. Mitigation: streaming/batched resolution where possible, progress reporting, cancellation, and configurable exclusions.
-- **Git-ignore semantics:** A matching Git extension API may not be installed or available for all workspace folders. Mitigation: make Git-ignore support optional and state when it cannot be applied; never silently claim that ignored files were excluded.
-- **Dynamic-menu expectations:** Users may expect every workflow as a direct submenu item. Mitigation: default to a static submenu entry with a dynamic Quick Pick and ask for approval of this UX before implementation.
+| Risk | Mitigation |
+|---|---|
+| Command compatibility | Document editor-focus semantics; execute one file at a time; report file/step on failure |
+| Editor-state disruption | Preserve pre-existing editors; avoid closing documents; restore prior active editor |
+| Unexpected modifications | Preview, confirmation, explicit save policy, cancellation, per-file reporting |
+| Large target sets | Capped preview (500), streaming resolution, progress reporting, cancellation, configurable exclusions |
 
-## Recommended features
+---
 
-### Initial release
+## Target Repository Layout
 
-- Named workflows with ordered command steps and optional command arguments.
-- Explorer multi-file and folder context-menu execution, plus workspace and prompted-glob execution.
-- Workflow-specific include/exclude filters and conservative default directory exclusions.
-- Target preview and confirmation for bulk runs.
-- Per-run progress, cancellation, Output-channel diagnostics, and per-file success/failure summary.
-- Save policy and preservation of already-open editors (never auto-close them).
-- Multi-root workspace support.
-
-### Follow-up candidates
-
-- **SCM context menu** for selected changed files, after validating resource argument behavior.
-- **Editor tab context menu** for a single file.
-- A workflow-management UI or contributed snippets to make JSON settings easier to author.
-- Optional Git-ignore filtering through the built-in Git extension API, with explicit unavailable-state reporting.
-- Dry-run export of the target file list and a configurable concurrency mode only if command/editor semantics can be preserved safely.
-
-## Open questions
-
-1. Is a submenu entry that opens a picker of configured workflows acceptable, given that VS Code does not support dynamic contribution of a menu item per configured workflow?
-2. Should workflow definitions live only in user/workspace `settings.json` for the first release, or should implementation include a dedicated workflow editor UI?
-3. Should the first release support only Explorer context menus, or also SCM and editor-tab menus?
-4. Should Git-ignore filtering be included in the first release, with a clear fallback when the built-in Git extension API is unavailable?
-5. Is the proposed default of preview + confirmation for bulk runs and save-after-workflow acceptable?
+```
+.vscode/                              ← committed (dev DX: launch, tasks, settings)
+  launch.json
+  tasks.json
+  settings.json
+docs/
+  PROJECT_CONSTITUTION.md
+  PROJECT_STATUS.md
+  architecture/
+    ARCHITECTURE.md                   ← this file
+    ADR/
+  roadmap/
+    ROADMAP.md
+  epics/
+    EPIC_INDEX.md
+    multi-command-workflows/
+      EPIC.md
+      STATUS.md
+      CHANGELOG.md
+      features/
+        workflow-execution/
+          SPEC.md
+          PLAN.md
+          TASKS.md
+          IMPLEMENTATION.md
+          CHANGELOG.md
+icon/
+  icon.png
+src/
+  extension.ts
+  workflows.ts
+  targetResolver.ts
+  workflowExecutor.ts
+  targetPreview.ts
+test/
+  workflows.test.ts
+  runTest.ts
+  suite/
+    index.ts
+    extension.test.ts
+  fixtures/
+    multi-root.code-workspace
+    workspace-a/
+    workspace-b/
+.gitignore
+.vscodeignore
+esbuild.js                            ← added during refactor
+eslint.config.mjs                     ← added during refactor
+icon.png
+LICENSE
+package.json
+README.md
+tsconfig.json
+```

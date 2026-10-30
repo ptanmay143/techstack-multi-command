@@ -30,7 +30,6 @@ interface TargetRequest {
 }
 
 const ALWAYS_EXCLUDED_DIRECTORIES = new Set([".git"]);
-const EMPTY_EXCLUSIONS: readonly string[] = [];
 
 export async function resolveTargets(
 	scope: TargetScope,

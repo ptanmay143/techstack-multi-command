@@ -46,7 +46,7 @@ export async function previewTargets(
 				(choice) => finish(choice === "Run Workflow"),
 				(error: unknown) => {
 					quickPick.dispose();
-					reject(error);
+					reject(error instanceof Error ? error : new Error(String(error)));
 				}
 			);
 		});

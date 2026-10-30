@@ -4,6 +4,7 @@
 # Add project-specific ignore rules in this section. The extension preserves this content.
 node_modules/
 out/
+dist/
 *.vsix
 .vscode-test/
 
